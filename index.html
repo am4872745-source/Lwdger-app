@@ -116,6 +116,15 @@
   .btn-confirm{background:var(--spend); color:#1a1a1a;}
   #saved-edit-confirm{background:var(--save);}
 
+  .cat-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .cat-chip{
+    display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--divider);
+    border-radius:20px; padding:8px 12px; font-size:13px; color:var(--text); cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .cat-chip .cat-icon{font-size:15px; line-height:1;}
+  .cat-chip.selected{background:var(--spend-dim); border-color:var(--spend); color:var(--text);}
+  .ledger-icon{margin-right:8px; font-size:15px;}
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -127,24 +136,24 @@
     <div class="home-title">Overview</div>
     <div class="panel" id="panel-card" onclick="go('card')">
       <div class="panel-label">Card</div>
-      <div class="panel-amount" id="home-card-amt">$0</div>
+      <div class="panel-amount" id="home-card-amt">0 DZD</div>
     </div>
     <div class="panel" id="panel-saved" onclick="go('saved')">
       <div class="panel-label">Saved</div>
-      <div class="panel-amount" id="home-saved-amt">$0</div>
+      <div class="panel-amount" id="home-saved-amt">0 DZD</div>
     </div>
   </div>
 
   <!-- CARD SCREEN -->
   <div class="screen" id="card">
     <div class="topbar">
-      <button class="back" onclick="go('home')">â€¹</button>
+      <button class="back" onclick="go('home')">‹</button>
       <div class="topbar-title">Card</div>
-      <button class="gear" onclick="toggleAuto('card')">âš™</button>
+      <button class="gear" onclick="toggleAuto('card')">⚙</button>
     </div>
     <div class="balance-block">
       <div class="balance-caption">Left after expenses</div>
-      <div class="balance-number" id="card-balance">$0</div>
+      <div class="balance-number" id="card-balance">0 DZD</div>
     </div>
     <div class="auto-panel" id="card-auto-panel">
       <div class="auto-panel-inner">
@@ -156,31 +165,38 @@
           <label>Amount</label>
           <input type="number" id="card-auto-amount" placeholder="0" inputmode="decimal">
         </div>
+        <div class="row">
+          <label>Day of month</label>
+          <input type="number" id="card-auto-day" placeholder="1" min="1" max="31" inputmode="numeric" style="width:70px;">
+        </div>
         <div class="row" style="margin-bottom:4px;">
           <button class="add-btn" style="padding:10px; font-size:13px;" onclick="saveAuto('card')">Save</button>
         </div>
-        <div class="auto-hint">Added once per calendar month, the moment you open the app after the month changes.</div>
+        <div class="auto-hint">Added once per calendar month, on or after the day you set above, the first time you open the app that month.</div>
       </div>
     </div>
     <div class="ledger-wrap">
       <div class="ledger-caption">Expenses</div>
       <div class="ledger" id="expense-list"></div>
     </div>
-    <div class="add-bar"><button class="add-btn" onclick="openModal('expense')">Add expense</button></div>
+    <div class="add-bar" style="display:flex; gap:10px;">
+      <button class="add-btn" style="flex:1; background:var(--save); color:#0F1412;" onclick="openModal('income')">Add amount</button>
+      <button class="add-btn" style="flex:1;" onclick="openModal('expense')">Add expense</button>
+    </div>
   </div>
 
   <!-- SAVED SCREEN -->
   <div class="screen" id="saved">
     <div class="topbar">
-      <button class="back" onclick="go('home')">â€¹</button>
+      <button class="back" onclick="go('home')">‹</button>
       <div class="topbar-title">Saved</div>
-      <button class="gear" onclick="toggleAuto('saved')">âš™</button>
+      <button class="gear" onclick="toggleAuto('saved')">⚙</button>
     </div>
     <div class="balance-block">
       <div class="balance-caption">Total saved</div>
       <div id="saved-display">
-        <span class="balance-number" id="saved-balance">$0</span>
-        <span class="edit-pencil" onclick="startEditSaved()">âœŽ</span>
+        <span class="balance-number" id="saved-balance">0 DZD</span>
+        <span class="edit-pencil" onclick="startEditSaved()">✎</span>
       </div>
     </div>
     <div class="auto-panel" id="saved-auto-panel">
@@ -193,10 +209,14 @@
           <label>Amount</label>
           <input type="number" id="saved-auto-amount" placeholder="0" inputmode="decimal">
         </div>
+        <div class="row">
+          <label>Day of month</label>
+          <input type="number" id="saved-auto-day" placeholder="1" min="1" max="31" inputmode="numeric" style="width:70px;">
+        </div>
         <div class="row" style="margin-bottom:4px;">
           <button class="add-btn" style="padding:10px; font-size:13px;" onclick="saveAuto('saved')">Save</button>
         </div>
-        <div class="auto-hint">Added once per calendar month, the moment you open the app after the month changes.</div>
+        <div class="auto-hint">Added once per calendar month, on or after the day you set above, the first time you open the app that month.</div>
       </div>
     </div>
   </div>
@@ -207,11 +227,15 @@
 <div class="modal-backdrop" id="modal-backdrop">
   <div class="modal">
     <div class="modal-title" id="modal-title">Add expense</div>
-    <div class="field"><label>Name</label><input type="text" id="exp-name" placeholder="Groceries"></div>
+    <div class="field" id="exp-category-field">
+      <label>Category</label>
+      <div class="cat-grid" id="exp-category-grid"></div>
+    </div>
+    <div class="field" id="exp-name-field"><label>Name</label><input type="text" id="exp-name" placeholder="Groceries"></div>
     <div class="field"><label>Amount</label><input type="number" id="exp-amount" placeholder="0" inputmode="decimal"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-confirm" onclick="confirmExpense()">Add</button>
+      <button class="btn-confirm" id="modal-confirm-btn" onclick="confirmModal()">Add</button>
     </div>
   </div>
 </div>
@@ -221,8 +245,8 @@ const KEY = 'ledgerAppData';
 
 function defaultData(){
   return {
-    card:{ balance:0, income:{ amount:0, enabled:false, lastApplied:null }, expenses:[] },
-    saved:{ balance:0, auto:{ amount:0, enabled:false, lastApplied:null } }
+    card:{ balance:0, income:{ amount:0, enabled:false, lastApplied:null, day:1 }, expenses:[] },
+    saved:{ balance:0, auto:{ amount:0, enabled:false, lastApplied:null, day:1 } }
   };
 }
 
@@ -231,7 +255,12 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(!raw) return defaultData();
     const d = JSON.parse(raw);
-    return { ...defaultData(), ...d, card:{...defaultData().card, ...d.card}, saved:{...defaultData().saved, ...d.saved} };
+    const def = defaultData();
+    return {
+      ...def, ...d,
+      card:{ ...def.card, ...d.card, income:{ ...def.card.income, ...(d.card && d.card.income) } },
+      saved:{ ...def.saved, ...d.saved, auto:{ ...def.saved.auto, ...(d.saved && d.saved.auto) } }
+    };
   }catch(e){ return defaultData(); }
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
@@ -243,13 +272,21 @@ function currentMonthKey(){
   return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
 }
 
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+
 function applyAutomations(){
+  const now = new Date();
   const mk = currentMonthKey();
-  if(state.card.income.enabled && state.card.income.lastApplied !== mk && state.card.income.amount > 0){
+  const today = now.getDate();
+  const dim = daysInMonth(now.getFullYear(), now.getMonth());
+
+  const cardDay = Math.min(Math.max(state.card.income.day || 1, 1), dim);
+  if(state.card.income.enabled && state.card.income.lastApplied !== mk && state.card.income.amount > 0 && today >= cardDay){
     state.card.balance += Number(state.card.income.amount);
     state.card.income.lastApplied = mk;
   }
-  if(state.saved.auto.enabled && state.saved.auto.lastApplied !== mk && state.saved.auto.amount > 0){
+  const savedDay = Math.min(Math.max(state.saved.auto.day || 1, 1), dim);
+  if(state.saved.auto.enabled && state.saved.auto.lastApplied !== mk && state.saved.auto.amount > 0 && today >= savedDay){
     state.saved.balance += Number(state.saved.auto.amount);
     state.saved.auto.lastApplied = mk;
   }
@@ -258,7 +295,7 @@ function applyAutomations(){
 
 function fmt(n){
   const v = Number(n)||0;
-  return '$' + v.toLocaleString(undefined,{minimumFractionDigits: v%1===0?0:2, maximumFractionDigits:2});
+  return v.toLocaleString(undefined,{minimumFractionDigits: v%1===0?0:2, maximumFractionDigits:2}) + ' DZD';
 }
 
 function render(){
@@ -269,8 +306,10 @@ function render(){
 
   document.getElementById('card-auto-switch').classList.toggle('on', state.card.income.enabled);
   document.getElementById('card-auto-amount').value = state.card.income.amount || '';
+  document.getElementById('card-auto-day').value = state.card.income.day || 1;
   document.getElementById('saved-auto-switch').classList.toggle('on', state.saved.auto.enabled);
   document.getElementById('saved-auto-amount').value = state.saved.auto.amount || '';
+  document.getElementById('saved-auto-day').value = state.saved.auto.day || 1;
 
   const list = document.getElementById('expense-list');
   if(state.card.expenses.length === 0){
@@ -279,12 +318,12 @@ function render(){
     list.innerHTML = state.card.expenses.slice().reverse().map(e => `
       <div class="ledger-row">
         <div>
-          <div class="ledger-name">${escapeHtml(e.name)}</div>
+          <div class="ledger-name"><span class="ledger-icon">${e.icon || '📦'}</span>${escapeHtml(e.name)}</div>
           <div class="ledger-date">${e.date}</div>
         </div>
         <div style="display:flex; align-items:center;">
           <div class="ledger-amount">-${fmt(e.amount)}</div>
-          <button class="ledger-del" onclick="deleteExpense('${e.id}')">âœ•</button>
+          <button class="ledger-del" onclick="deleteExpense('${e.id}')">✕</button>
         </div>
       </div>
     `).join('');
@@ -312,83 +351,87 @@ function saveAuto(which){
   const enabled = document.getElementById(which+'-auto-switch').classList.contains('on');
   const amountEl = document.getElementById(which+'-auto-amount');
   const amount = parseFloat(amountEl.value) || 0;
+  const dayEl = document.getElementById(which+'-auto-day');
+  const day = Math.min(31, Math.max(1, parseInt(dayEl.value) || 1));
   if(which === 'card'){
     state.card.income.enabled = enabled;
     state.card.income.amount = amount;
+    state.card.income.day = day;
   } else {
     state.saved.auto.enabled = enabled;
     state.saved.auto.amount = amount;
+    state.saved.auto.day = day;
   }
   save(); render();
   document.getElementById(which+'-auto-panel').classList.remove('open');
 }
 
+const CATEGORIES = [
+  { icon:'🛒', label:'Groceries' },
+  { icon:'🍽️', label:'Dining' },
+  { icon:'🚗', label:'Transport' },
+  { icon:'🧾', label:'Bills' },
+  { icon:'🏠', label:'Rent' },
+  { icon:'🛍️', label:'Shopping' },
+  { icon:'🏥', label:'Health' },
+  { icon:'🎬', label:'Entertainment' },
+  { icon:'📶', label:'Phone/Internet' },
+  { icon:'✈️', label:'Travel' },
+  { icon:'🎁', label:'Gift' },
+  { icon:'📦', label:'Other' }
+];
+let selectedCategory = null;
+
+function renderCategoryGrid(){
+  const grid = document.getElementById('exp-category-grid');
+  grid.innerHTML = CATEGORIES.map(c => `
+    <div class="cat-chip" data-label="${c.label}" onclick="pickCategory('${c.icon}','${c.label}')">
+      <span class="cat-icon">${c.icon}</span><span>${c.label}</span>
+    </div>
+  `).join('');
+}
+function pickCategory(icon, label){
+  selectedCategory = icon;
+  document.getElementById('exp-name').value = label;
+  document.querySelectorAll('#exp-category-grid .cat-chip').forEach(chip => {
+    chip.classList.toggle('selected', chip.getAttribute('data-label') === label);
+  });
+}
+
 let modalMode = 'expense';
 function openModal(mode){
   modalMode = mode;
+  selectedCategory = null;
   document.getElementById('exp-name').value = '';
   document.getElementById('exp-amount').value = '';
+  const nameField = document.getElementById('exp-name-field');
+  const catField = document.getElementById('exp-category-field');
+  const title = document.getElementById('modal-title');
+  const confirmBtn = document.getElementById('modal-confirm-btn');
+  if(mode === 'income'){
+    nameField.style.display = 'none';
+    catField.style.display = 'none';
+    title.textContent = 'Add amount';
+    confirmBtn.style.background = 'var(--save)';
+    confirmBtn.style.color = '#0F1412';
+  } else {
+    nameField.style.display = '';
+    catField.style.display = '';
+    renderCategoryGrid();
+    title.textContent = 'Add expense';
+    confirmBtn.style.background = 'var(--spend)';
+    confirmBtn.style.color = '#1a1a1a';
+  }
   document.getElementById('modal-backdrop').classList.add('show');
 }
 function closeModal(){ document.getElementById('modal-backdrop').classList.remove('show'); }
-function confirmExpense(){
-  const name = document.getElementById('exp-name').value.trim() || 'Expense';
+function confirmModal(){
   const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
   if(amount <= 0){ closeModal(); return; }
-  const today = new Date();
-  const dateStr = today.toLocaleDateString(undefined,{month:'short', day:'numeric'});
-  state.card.expenses.push({ id: Date.now().toString(36), name, amount, date: dateStr });
-  state.card.balance -= amount;
-  save(); render(); closeModal();
-}
-function deleteExpense(id){
-  const idx = state.card.expenses.findIndex(e => e.id === id);
-  if(idx === -1) return;
-  state.card.balance += state.card.expenses[idx].amount;
-  state.card.expenses.splice(idx,1);
-  save(); render();
-}
-
-function startEditSaved(){
-  const disp = document.getElementById('saved-display');
-  disp.innerHTML = `
-    <input class="balance-input" id="saved-edit-input" type="number" inputmode="decimal" value="${state.saved.balance}">
-    <span class="edit-pencil" onclick="confirmEditSaved()" id="saved-edit-confirm">âœ“</span>
-  `;
-  const input = document.getElementById('saved-edit-input');
-  input.focus(); input.select();
-  input.addEventListener('keydown', e => { if(e.key === 'Enter') confirmEditSaved(); });
-}
-function confirmEditSaved(){
-  const val = parseFloat(document.getElementById('saved-edit-input').value);
-  state.saved.balance = isNaN(val) ? state.saved.balance : val;
-  save();
-  const disp = document.getElementById('saved-display');
-  disp.innerHTML = `<span class="balance-number" id="saved-balance">${fmt(state.saved.balance)}</span><span class="edit-pencil" onclick="startEditSaved()">âœŽ</span>`;
-  render();
-}
-
-// Manifest for "Add to Home Screen" install as a standalone app
-(function setManifest(){
-  const manifest = {
-    name: "Ledger",
-    short_name: "Ledger",
-    start_url: ".",
-    display: "standalone",
-    background_color: "#0F1412",
-    theme_color: "#0F1412",
-    icons: []
-  };
-  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('link');
-  link.rel = 'manifest';
-  link.href = url;
-  document.head.appendChild(link);
-})();
-
-applyAutomations();
-render();
-</script>
-</body>
-</html>
+  if(modalMode === 'income'){
+    state.card.balance += amount;
+  } else {
+    const name = document.getElementById('exp-name').value.trim() || 'Expense';
+    const icon = selectedCategory || '📦';
+    const today = new Date();
+    const dateStr = t
